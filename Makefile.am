@@ -80,9 +80,7 @@ libgjs_la_SOURCES =		\
 	gjs/byteArray.cpp		\
 	gjs/context.cpp		\
 	gjs/context-private.h		\
-	gjs/importer.cpp		\
 	gjs/gi.h		\
-	gjs/gi.cpp		\
 	gjs/coverage-internal.h	\
 	gjs/coverage.cpp \
 	gjs/jsapi-constructor-proxy.cpp	\
@@ -154,7 +152,6 @@ libgjs_la_SOURCES += $(libgjs_private_source_files)
 # These used to be public headers for external modules
 libgjs_la_SOURCES +=		\
 	gjs/byteArray.h		\
-	gjs/importer.h		\
 	gjs/jsapi-util.h	\
 	gjs/jsapi-wrapper.h	\
 	gjs/runtime.h		\
