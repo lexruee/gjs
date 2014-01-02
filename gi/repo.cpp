@@ -88,8 +88,6 @@ resolve_namespace_object(JSContext       *context,
                          JS::HandleId     ns_id,
                          const char      *ns_name)
 {
-    GIRepository *repo;
-    GError *error;
     char *version;
 
     JSAutoRequest ar(context);
@@ -97,27 +95,17 @@ resolve_namespace_object(JSContext       *context,
     if (!get_version_for_ns(context, repo_obj, ns_id, &version))
         return false;
 
-    repo = g_irepository_get_default();
-
-    error = NULL;
-    g_irepository_require(repo, ns_name, version, (GIRepositoryLoadFlags) 0, &error);
-    if (error != NULL) {
-        gjs_throw(context,
-                  "Requiring %s, version %s: %s",
-                  ns_name, version?version:"none", error->message);
-
-        g_error_free(error);
+    /* Defines a property on "obj" (the javascript repo object)
+     * with the given namespace name, pointing to that namespace
+     * in the repo.
+     */
+    JS::RootedObject gi_namespace(context);
+    if (!gjs_import_gi_module(context, ns_name, version, &gi_namespace)) {
         g_free(version);
         return false;
     }
 
     g_free(version);
-
-    /* Defines a property on "obj" (the javascript repo object)
-     * with the given namespace name, pointing to that namespace
-     * in the repo.
-     */
-    JS::RootedObject gi_namespace(context, gjs_create_ns(context, ns_name));
 
     /* Define the property early, to avoid reentrancy issues if
        the override module looks for namespaces that import this */

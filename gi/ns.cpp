@@ -179,9 +179,10 @@ JSFunctionSpec gjs_ns_proto_funcs[] = {
     JS_FS_END
 };
 
-static JSObject*
-ns_new(JSContext    *context,
-       const char   *ns_name)
+static bool
+ns_new(JSContext              *context,
+       const char             *ns_name,
+       JS::MutableHandleObject ns)
 {
     Ns *priv;
     bool found;
@@ -190,7 +191,7 @@ ns_new(JSContext    *context,
     JS::RootedObject global(context, gjs_get_import_global(context));
 
     if (!JS_HasProperty(context, global, gjs_ns_class.name, &found))
-        return NULL;
+        return false;
     if (!found) {
         JSObject *prototype;
         prototype = JS_InitClass(context, global,
@@ -222,8 +223,7 @@ ns_new(JSContext    *context,
                   gjs_ns_class.name, prototype);
     }
 
-    JS::RootedObject ns(context, JS_NewObject(context, &gjs_ns_class,
-                                              JS::NullPtr(), global));
+    ns.set(JS_NewObject(context, &gjs_ns_class, JS::NullPtr(), global));
     if (ns == NULL)
         g_error("No memory to create ns object");
 
@@ -239,12 +239,23 @@ ns_new(JSContext    *context,
 
     priv = priv_from_js(context, ns);
     priv->gi_namespace = g_strdup(ns_name);
-    return ns;
+    return true;
 }
 
-JSObject*
-gjs_create_ns(JSContext    *context,
-              const char   *ns_name)
+bool
+gjs_import_gi_module(JSContext              *cx,
+                     const char             *module_name,
+                     const char             *module_version,
+                     JS::MutableHandleObject module)
 {
-    return ns_new(context, ns_name);
+    GIRepository *repo = g_irepository_get_default();
+    GError *error = NULL;
+
+    if (!g_irepository_require(repo, module_name, module_version, (GIRepositoryLoadFlags) 0, &error)) {
+        gjs_throw_g_error(cx, error);
+        g_clear_error(&error);
+        return false;
+    }
+
+    return ns_new(cx, module_name, module);
 }
