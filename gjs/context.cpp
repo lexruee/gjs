@@ -26,6 +26,7 @@
 #include <gio/gio.h>
 
 #include "context-private.h"
+#include "bootstrap.h"
 #include "importer.h"
 #include "jsapi-constructor-proxy.h"
 #include "jsapi-private.h"
@@ -515,6 +516,9 @@ gjs_context_constructed(GObject *object)
      * import GLib */
     if(!gjs_define_promise_object(js_context->context, global))
         g_error("Failed to define global Promise object");
+
+    if (!gjs_run_bootstrap(js_context->context))
+        g_error("Failed to bootstrap GJS context");
 
     JS_EndRequest(js_context->context);
 

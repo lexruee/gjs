@@ -75,6 +75,8 @@ libgjs_la_LIBADD += $(GJS_GTK_LIBS)
 endif
 
 libgjs_la_SOURCES =		\
+	gjs/bootstrap.cpp		\
+	gjs/bootstrap.h			\
 	gjs/byteArray.cpp		\
 	gjs/context.cpp		\
 	gjs/context-private.h		\
