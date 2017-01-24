@@ -25,7 +25,6 @@
 
 #include "coverage.h"
 #include "coverage-internal.h"
-#include "importer.h"
 #include "jsapi-util-args.h"
 #include "util/error.h"
 
@@ -1557,9 +1556,13 @@ gjs_wrap_root_importer_in_compartment(JSContext *context,
 {
     JSAutoRequest ar(context);
     JSAutoCompartment ac(context, compartment);
-    JS::RootedValue importer (JS_GetRuntime(context),
-                              gjs_get_global_slot(context,
-                                                  GJS_GLOBAL_SLOT_IMPORTS));
+
+    JS::RootedValue importer(context);
+    JS::RootedObject global(context, gjs_get_import_global(context));
+    {
+        JSAutoCompartment ac(context, global);
+        JS_GetProperty(context, global, "imports", &importer);
+    }
 
     g_assert (!importer.isUndefined());
 
@@ -1631,7 +1634,8 @@ bootstrap_coverage(GjsCoverage *coverage)
         /* Now copy the global root importer (which we just created,
          * if it didn't exist) to our global object
          */
-        if (!gjs_define_root_importer_object(context, debugger_compartment, wrapped_importer)) {
+        if (!JS_DefineProperty(context, debugger_compartment, "imports",
+                               wrapped_importer, GJS_MODULE_PROP_FLAGS)) {
             gjs_throw(context, "Failed to set 'imports' on debugger compartment");
             return false;
         }

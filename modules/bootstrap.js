@@ -54,12 +54,20 @@
             return module;
         }
 
+        function defineMetaProperties(module, parent, name) {
+            module.__moduleName__ = name;
+            module.__parentModule__ = parent;
+            if (!parent || !parent.__modulePath__)
+                module.__modulePath__ = name;
+            else
+                module.__modulePath__ = parent.__modulePath__ + '.' + name;
+        }
+
         function importFile(parent, name, file) {
             let module = {};
             parent[name] = module;
             module.__file__ = file.get_parse_name();
-            module.__moduleName__ = name;
-            module.__parentModule__ = parent;
+            defineMetaProperties(module, parent, name);
             importModule(module, file);
         }
 
@@ -75,9 +83,7 @@
             let module = createSearchPathImporter();
             parent[name] = module;
             module.searchPath = searchPath;
-            module.__moduleName__ = name;
-            module.__parentModule__ = parent;
-
+            defineMetaProperties(module, parent, name);
             tryImport(module, '__init__');
         }
 
@@ -123,13 +129,14 @@
 
         let rootDirectoryImporter = createSearchPathImporter();
         rootDirectoryImporter.searchPath = Importer.getBuiltinSearchPath();
+        defineMetaProperties(rootDirectoryImporter, null, null);
 
         // root importer, checks for native modules
         let rootImporter = new Proxy(rootDirectoryImporter, {
             get: function(target, name) {
                 if (!target[name])
                     target[name] = importNativeModule(name);
-                if (!target[name])
+                if (!target.hasOwnProperty(name))
                     target[name] = rootDirectoryImporter[name];
                 return target[name];
             },
