@@ -157,6 +157,10 @@ describe('GObject interface', function () {
         expect(() => new AGObjectInterface()).toThrow();
     });
 
+    it('has a name', function () {
+        expect(AGObjectInterface.name).toEqual('AGObjectInterface');
+    });
+
     it('reports its type name', function () {
         expect(AGObjectInterface.$gtype.name).toEqual('ArbitraryGTypeName');
     });
@@ -169,12 +173,10 @@ describe('GObject interface', function () {
     });
 
     it('is implemented by a GObject class with the correct class object', function () {
-        expect(GObjectImplementingGObjectInterface.toString())
-            .toEqual('[object GObjectClass for GObjectImplementingGObjectInterface]');
         let obj = new GObjectImplementingGObjectInterface();
         expect(obj.constructor).toEqual(GObjectImplementingGObjectInterface);
-        expect(obj.constructor.toString())
-            .toEqual('[object GObjectClass for GObjectImplementingGObjectInterface]');
+        expect(obj.constructor.name)
+            .toEqual('GObjectImplementingGObjectInterface');
     });
 
     it('can be implemented by a class also implementing a Lang.Interface', function () {

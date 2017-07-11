@@ -161,6 +161,13 @@ const GObjectMeta = new Lang.Class({
                                 enumerable: false,
                                 value: interfaces }
         });
+        // Overwrite the C++-set class name, as if it were an ES6 class
+        Object.defineProperty(newClass, 'name', {
+            writable: false,
+            configurable: true,
+            enumerable: false,
+            value: name,
+        });
 
         interfaces.forEach((iface) => {
             if (iface instanceof Lang.Interface)
@@ -189,7 +196,6 @@ GObjectMeta.MetaInterface = GObjectInterface;
 GObjectInterface.__super__ = Lang.Interface;
 GObjectInterface.prototype = Object.create(Lang.Interface.prototype);
 GObjectInterface.prototype.constructor = GObjectInterface;
-GObjectInterface.prototype.__name__ = 'GObjectInterface';
 
 GObjectInterface.prototype._construct = function (params) {
     if (!params.Name) {
@@ -221,6 +227,13 @@ GObjectInterface.prototype._construct = function (params) {
         configurable: false,
         enumerable: false,
         value: this.constructor
+    });
+    // Overwrite the C++-set class name, as if it were an ES6 class
+    Object.defineProperty(newInterface, 'name', {
+        writable: false,
+        configurable: true,
+        enumerable: false,
+        value: params.Name,
     });
 
     return newInterface;

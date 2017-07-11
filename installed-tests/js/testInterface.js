@@ -107,6 +107,10 @@ describe('An interface', function () {
         expect(InterfaceRequiringOtherInterface instanceof Lang.Interface).toBeTruthy();
     });
 
+    it('has a name', function () {
+        expect(AnInterface.name).toEqual('AnInterface');
+    });
+
     it('cannot be instantiated', function () {
         expect(() => new AnInterface()).toThrow();
     });

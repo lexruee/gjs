@@ -102,6 +102,10 @@ describe('Class framework', function () {
         expect(newMagic instanceof MagicBase).toBeTruthy();
     });
 
+    it('has a name', function () {
+        expect(Magic.name).toEqual('Magic');
+    });
+
     it('reports a sensible value for toString()', function () {
         let newMagic = new MagicBase();
         expect(newMagic.toString()).toEqual('[object MagicBase]');

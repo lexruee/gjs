@@ -209,6 +209,10 @@ describe('GObject class', function () {
         expect(myInstance3.construct).toEqual('quz');
     });
 
+    it('has a name', function () {
+        expect(MyObject.name).toEqual('MyObject');
+    });
+
     // the following would (should) cause a CRITICAL:
     // myInstance.readonly = 'val';
     // myInstance.construct = 'val';

@@ -110,9 +110,8 @@ _Base.prototype._construct = function() {
     this._init.apply(this, arguments);
     return this;
 };
-_Base.prototype.__name__ = '_Base';
 _Base.prototype.toString = function() {
-    return '[object ' + this.__name__ + ']';
+    return `[object ${this.constructor.name}]`;
 };
 
 function _parent() {
@@ -167,7 +166,6 @@ function Class(params) {
 Class.__super__ = _Base;
 Class.prototype = Object.create(_Base.prototype);
 Class.prototype.constructor = Class;
-Class.prototype.__name__ = 'Class';
 
 Class.prototype.wrapFunction = function(name, meth) {
     if (meth._origin) meth = meth._origin;
@@ -188,7 +186,7 @@ Class.prototype.wrapFunction = function(name, meth) {
 }
 
 Class.prototype.toString = function() {
-    return '[object ' + this.__name__ + ' for ' + this.prototype.__name__ + ']';
+    return `[object ${this.constructor.name} for ${this.prototype.constructor.name}]`;
 };
 
 Class.prototype._construct = function(params) {
@@ -240,6 +238,12 @@ Class.prototype._construct = function(params) {
                             configurable: false,
                             enumerable: false,
                             value: interfaces }
+    });
+    Object.defineProperty(newClass, 'name', {
+        writable: false,
+        configurable: true,
+        enumerable: false,
+        value: name,
     });
 
     interfaces.forEach((iface) => {
@@ -305,10 +309,6 @@ Class.prototype._init = function(params) {
 
     Object.defineProperties(this.prototype, propertyObj);
     Object.defineProperties(this.prototype, {
-        '__name__': { writable: false,
-                      configurable: false,
-                      enumerable: false,
-                      value: name },
         'parent': { writable: false,
                     configurable: false,
                     enumerable: false,
@@ -384,7 +384,6 @@ Interface.UNIMPLEMENTED = function UNIMPLEMENTED () {
 Interface.__super__ = _Base;
 Interface.prototype = Object.create(_Base.prototype);
 Interface.prototype.constructor = Interface;
-Interface.prototype.__name__ = 'Interface';
 
 Interface.prototype._construct = function (params) {
     if (!params.Name)
@@ -395,7 +394,6 @@ Interface.prototype._construct = function (params) {
     newInterface.__super__ = Interface;
     newInterface.prototype = Object.create(Interface.prototype);
     newInterface.prototype.constructor = newInterface;
-    newInterface.prototype.__name__ = params.Name;
 
     newInterface._init.apply(newInterface, arguments);
 
@@ -404,6 +402,12 @@ Interface.prototype._construct = function (params) {
                             configurable: false,
                             enumerable: false,
                             value: this.constructor });
+    Object.defineProperty(newInterface, 'name', {
+        writable: false,
+        configurable: true,
+        enumerable: false,
+        value: params.Name,
+    });
 
     return newInterface;
 };
@@ -424,14 +428,13 @@ Interface.prototype._check = function (proto) {
             interfaces.indexOf(required) > interfaces.indexOf(this)) &&
             !(proto instanceof required));
     }).map((required) =>
-        // __name__ is only present on GJS-created classes and will be the most
-        // accurate name. required.name will be present on introspected GObjects
-        // but is not preferred because it will be the C name. The last option
-        // is just so that we print something if there is garbage in Requires.
-        required.prototype.__name__ || required.name || required);
+        // required.name will be present on JS classes, but on introspected
+        // GObjects it will be the C name. The alternative is just so that
+        // we print something if there is garbage in Requires.
+        required.name || required);
     if (unfulfilledReqs.length > 0) {
         throw new Error('The following interfaces must be implemented before ' +
-            this.prototype.__name__ + ': ' + unfulfilledReqs.join(', '));
+            `${this.constructor.name}: ${unfulfilledReqs.join(', ')}`);
     }
 
     // Check that this interface's required methods are implemented
@@ -439,12 +442,12 @@ Interface.prototype._check = function (proto) {
     .filter((p) => this.prototype[p] === Interface.UNIMPLEMENTED)
     .filter((p) => !(p in proto) || proto[p] === Interface.UNIMPLEMENTED);
     if (unimplementedFns.length > 0)
-        throw new Error('The following members of ' + this.prototype.__name__ +
+        throw new Error(`The following members of ${this.constructor.name}` +
             ' are not implemented yet: ' + unimplementedFns.join(', '));
 };
 
 Interface.prototype.toString = function () {
-    return '[interface ' + this.__name__ + ' for ' + this.prototype.__name__ + ']';
+    return `[interface ${this.constructor.name} for ${this.prototype.constructor.name}]`;
 };
 
 Interface.prototype._init = function (params) {
@@ -475,10 +478,6 @@ Interface.prototype._init = function (params) {
 
     Object.defineProperties(this.prototype, propertyObj);
     Object.defineProperties(this.prototype, {
-        '__name__': { writable: false,
-                      configurable: false,
-                      enumerable: false,
-                      value: name },
         '__requires__': { writable: false,
                           configurable: false,
                           enumerable: false,
