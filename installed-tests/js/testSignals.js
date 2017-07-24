@@ -12,10 +12,7 @@ describe('Object with signals', function () {
     testSignals(Foo);
 });
 
-const FooWithoutSignals = new Lang.Class({
-    Name: 'FooWithoutSignals',
-    _init: function () {},
-});
+class FooWithoutSignals {}
 Signals.addSignalMethods(FooWithoutSignals.prototype);
 
 describe('Object with signals added', function () {
