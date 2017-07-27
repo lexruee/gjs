@@ -1,3 +1,4 @@
+/* exported _init, interfaces, properties, registerClass, signals */
 // Copyright 2011 Jasper St. Pierre
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,6 +24,95 @@ const GjsPrivate = imports.gi.GjsPrivate;
 const Legacy = imports._legacy;
 
 let GObject;
+
+var GTypeName = Symbol('GTypeName');
+var interfaces = Symbol('GObject interfaces');
+var properties = Symbol('GObject properties');
+var signals = Symbol('GObject signals');
+
+function registerClass(klass) {
+    if (arguments.length == 2) {
+        // The two-argument form is the convenient syntax without ESnext
+        // decorators and class data properties. The first argument is an
+        // object with meta info such as properties and signals. The second
+        // argument is the class expression for the class itself.
+        //
+        //     var MyClass = GObject.registerClass({
+        //         Properties: { ... },
+        //         Signals: { ... },
+        //     }, class MyClass extends GObject.Object {
+        //         constructor() { ... }
+        //     });
+        //
+        // When decorators and class data properties become part of the
+        // standard, this function can be used directly as a decorator.
+        let metaInfo = arguments[0];
+        klass = arguments[1];
+        if ('GTypeName' in metaInfo)
+            klass[GTypeName] = metaInfo.GTypeName;
+        if ('Implements' in metaInfo)
+            klass[interfaces] = metaInfo.Implements;
+        if ('Properties' in metaInfo)
+            klass[properties] = metaInfo.Properties;
+        if ('Signals' in metaInfo)
+            klass[signals] = metaInfo.Signals;
+    }
+
+    if (!(klass.prototype instanceof GObject.Object))
+        throw new TypeError('GObject.registerClass() used with invalid base ' +
+            `class (is ${Object.getPrototypeOf(klass).name})`);
+
+    // Find the "least derived" class with a _classInit static function; there
+    // definitely is one, since this class must inherit from GObject
+    let initclass = klass;
+    while (typeof initclass._classInit === 'undefined')
+        initclass = Object.getPrototypeOf(initclass.prototype).constructor;
+    return initclass._classInit(klass);
+}
+
+// Some common functions between GObject.Class and GObject.Interface
+
+function _createSignals(gtype, signals) {
+    for (let signalName in signals) {
+        let obj = signals[signalName];
+        let flags = (obj.flags !== undefined) ? obj.flags : GObject.SignalFlags.RUN_FIRST;
+        let accumulator = (obj.accumulator !== undefined) ? obj.accumulator : GObject.AccumulatorType.NONE;
+        let rtype = (obj.return_type !== undefined) ? obj.return_type : GObject.TYPE_NONE;
+        let paramtypes = (obj.param_types !== undefined) ? obj.param_types : [];
+
+        try {
+            obj.signal_id = Gi.signal_new(gtype, signalName, flags, accumulator, rtype, paramtypes);
+        } catch (e) {
+            throw new TypeError('Invalid signal ' + signalName + ': ' + e.message);
+        }
+    }
+}
+
+function _createGTypeName(klass) {
+    if (klass.hasOwnProperty(GTypeName))
+        return klass[GTypeName];
+    return `Gjs_${klass.name}`;
+}
+
+function _propertiesAsArray(klass) {
+    let propertiesArray = [];
+    if (klass.hasOwnProperty(properties)) {
+        for (let prop in klass[properties]) {
+            propertiesArray.push(klass[properties][prop]);
+        }
+    }
+    return propertiesArray;
+}
+
+function _copyAllDescriptors(target, source) {
+    Object.getOwnPropertyNames(source)
+    .filter(name => name !== 'prototype')
+    .concat(Object.getOwnPropertySymbols(source))
+    .forEach(key => {
+        let descriptor = Object.getOwnPropertyDescriptor(source, key);
+        Object.defineProperty(target, key, descriptor);
+    });
+}
 
 function _init() {
 
@@ -182,6 +272,53 @@ function _init() {
     this.Object.prototype._construct = function() {
         this._init.apply(this, arguments);
         return this;
+    };
+
+    this.registerClass = registerClass;
+
+    this.Object._classInit = function(klass) {
+        let gtypename = _createGTypeName(klass);
+        let gobjectInterfaces = klass.hasOwnProperty(interfaces) ?
+            klass[interfaces] : [];
+        let propertiesArray = _propertiesAsArray(klass);
+        let parent = Object.getPrototypeOf(klass);
+        let gobjectSignals = klass.hasOwnProperty(signals) ?
+            klass[signals] : [];
+
+        let newClass = Gi.register_type(parent.prototype, gtypename,
+            gobjectInterfaces, propertiesArray);
+
+        _createSignals(newClass.$gtype, gobjectSignals);
+
+        _copyAllDescriptors(newClass, klass);
+        _copyAllDescriptors(newClass.prototype, klass.prototype);
+
+        Object.getOwnPropertyNames(newClass.prototype)
+        .filter(name => name.startsWith('vfunc_') || name.startsWith('on_'))
+        .forEach(name => {
+            let descriptor = Object.getOwnPropertyDescriptor(newClass.prototype, name);
+            if (typeof descriptor.value !== 'function')
+                return;
+
+            let func = newClass.prototype[name];
+
+            if (name.startsWith('vfunc_')) {
+                Gi.hook_up_vfunc(newClass.prototype, name.slice(6), func);
+            } else if (name.startsWith('on_')) {
+                let id = GObject.signal_lookup(name.slice(3).replace('_', '-'),
+                    newClass.$gtype);
+                if (id !== 0) {
+                    GObject.signal_override_class_closure(id, newClass.$gtype, function() {
+                        let argArray = Array.from(arguments);
+                        let emitter = argArray.shift();
+
+                        return func.apply(emitter, argArray);
+                    });
+                }
+            }
+        });
+
+        return newClass;
     };
 
     // fake enum for signal accumulators, keep in sync with gi/object.c
